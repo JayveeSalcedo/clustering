@@ -1,0 +1,247 @@
+/* ── Root ────────────────────────────────────────────────────── */
+.da-root {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1100px;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+.da-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--surface);
+  padding: 12px 0;
+  margin-bottom: -4px;
+  border-bottom: 1px solid var(--border);
+}
+.da-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.4px;
+  margin-bottom: 4px;
+}
+.da-sub {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ── Filters ─────────────────────────────────────────────────── */
+.da-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+.filter-input {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.filter-input:focus { border-color: var(--accent); }
+.filter-select { padding-right: 28px; cursor: pointer; }
+
+.apply-btn {
+  height: 34px;
+  padding: 0 18px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.apply-btn:hover    { background: #1e40af; }
+.apply-btn:disabled { background: var(--border2); cursor: not-allowed; }
+
+/* ── KPI cards ───────────────────────────────────────────────── */
+.da-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-sm);
+  border-top: 3px solid transparent;
+}
+.kpi-blue   { border-top-color: #1d4ed8; }
+.kpi-teal   { border-top-color: #0f766e; }
+.kpi-amber  { border-top-color: #b45309; }
+.kpi-violet { border-top-color: #7c3aed; }
+
+.kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+.kpi-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* ── Chart rows ──────────────────────────────────────────────── */
+.da-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 16px;
+}
+
+/* ── Cards ───────────────────────────────────────────────────── */
+.da-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.da-card-wide { /* takes wider slot in da-row */ }
+
+.da-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.da-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.da-card-header .da-card-title { margin-bottom: 0; }
+
+/* ── Tab toggle ──────────────────────────────────────────────── */
+.tab-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.tab-btn {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  font-family: var(--font-ui);
+}
+.tab-btn:hover  { background: var(--surface2); color: var(--text); }
+.tab-btn.tab-active { background: var(--accent); color: #fff; }
+
+/* ── Country table ───────────────────────────────────────────── */
+.country-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.country-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  background: var(--surface);
+}
+.country-row:last-child { border-bottom: none; }
+.country-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.country-name { flex: 1; color: var(--text2); font-weight: 500; }
+.country-pct  { color: var(--muted); font-family: var(--font-mono); font-size: 11px; min-width: 36px; text-align: right; }
+.country-rev  { color: var(--text); font-family: var(--font-mono); font-size: 11px; font-weight: 600; min-width: 80px; text-align: right; }
+
+/* ── Loader / error ──────────────────────────────────────────── */
+.da-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 300px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.da-spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: daspin 0.8s linear infinite;
+}
+@keyframes daspin { to { transform: rotate(360deg); } }
+
+.da-error {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius);
+  max-width: 500px;
+}
+.da-error-title { font-size: 15px; font-weight: 600; color: var(--danger); }
+.da-error-msg   { font-size: 13px; color: #991b1b; line-height: 1.5; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .da-kpis { grid-template-columns: repeat(2, 1fr); }
+  .da-row  { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .da-kpis { grid-template-columns: 1fr 1fr; }
+  .da-header { flex-direction: column; }
+  .da-filters { width: 100%; }
+}

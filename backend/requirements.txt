@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+polars
+numpy
+scikit-learn
+openpyxl
+python-multipart
+groq
+python-dotenv
+xlrd
+fastexcel
