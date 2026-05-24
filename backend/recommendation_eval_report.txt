@@ -1,0 +1,164 @@
+======================================================================
+  FP-GROWTH RECOMMENDATION EVALUATION REPORT
+  Generated: 2026-05-24 22:05:03
+  Dataset  : C:\Users\ACER\Desktop\dataset\Online Retail.xlsx
+======================================================================
+
+Loading dataset...
+  Loaded 541,909 rows × 8 columns in 5.45s
+  Invoice column  : InvoiceNo
+  Product column  : Description
+  Customer column : CustomerID
+
+  Unique transactions : 20,607
+  Unique products     : 4,194
+  Total rows (clean)  : 531,164
+
+Building basket matrix...
+  Basket shape: 20,607 invoices × 4,194 products (3.06s)
+
+Running FP-Growth (support=0.02, confidence=0.2, top_n=30)...
+  Done in 2.25s — 30 rules returned
+
+══════════════════════════════════════════════════════════════════════
+  1. RULE QUALITY METRICS
+══════════════════════════════════════════════════════════════════════
+
+╭────────────────────┬─────────╮
+│ Metric             │   Value │
+├────────────────────┼─────────┤
+│ Total Rules        │ 30      │
+│ Avg Support        │  0.0268 │
+│ Avg Confidence     │  0.6334 │
+│ Avg Lift           │ 14.775  │
+│ Max Lift           │ 18.9856 │
+│ Min Lift           │ 11.9586 │
+│ Rules Lift Gt 1    │ 30      │
+│ Rules Lift Gt 2    │ 30      │
+│ Rules Lift Gt 3    │ 30      │
+│ Avg Leverage       │  0.025  │
+│ Avg Antecedent Len │  1.1    │
+│ Avg Consequent Len │  1.1    │
+╰────────────────────┴─────────╯
+
+══════════════════════════════════════════════════════════════════════
+  2. TOP 10 RULES BY LIFT
+══════════════════════════════════════════════════════════════════════
+
+╭──────────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────────┬───────────┬──────────────┬─────────╮
+│ IF (buy)                                                         │ THEN (recommend)                                                 │   Support │   Confidence │    Lift │
+├──────────────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────┼─────────┤
+│ GREEN REGENCY TEACUP AND SAUCER, ROSES REGENCY TEACUP AND SAUCER │ PINK REGENCY TEACUP AND SAUCER                                   │    0.0263 │       0.7057 │ 18.9856 │
+│ PINK REGENCY TEACUP AND SAUCER                                   │ GREEN REGENCY TEACUP AND SAUCER, ROSES REGENCY TEACUP AND SAUCER │    0.0263 │       0.7076 │ 18.9856 │
+│ PINK REGENCY TEACUP AND SAUCER, ROSES REGENCY TEACUP AND SAUCER  │ GREEN REGENCY TEACUP AND SAUCER                                  │    0.0263 │       0.9048 │ 18.3705 │
+│ GREEN REGENCY TEACUP AND SAUCER                                  │ PINK REGENCY TEACUP AND SAUCER, ROSES REGENCY TEACUP AND SAUCER  │    0.0263 │       0.5340 │ 18.3705 │
+│ PINK REGENCY TEACUP AND SAUCER                                   │ GREEN REGENCY TEACUP AND SAUCER                                  │    0.0307 │       0.8264 │ 16.7774 │
+│ GREEN REGENCY TEACUP AND SAUCER                                  │ PINK REGENCY TEACUP AND SAUCER                                   │    0.0307 │       0.6236 │ 16.7774 │
+│ GREEN REGENCY TEACUP AND SAUCER, PINK REGENCY TEACUP AND SAUCER  │ ROSES REGENCY TEACUP AND SAUCER                                  │    0.0263 │       0.8562 │ 16.5521 │
+│ ROSES REGENCY TEACUP AND SAUCER                                  │ GREEN REGENCY TEACUP AND SAUCER, PINK REGENCY TEACUP AND SAUCER  │    0.0263 │       0.5084 │ 16.5521 │
+│ GARDENERS KNEELING PAD KEEP CALM                                 │ GARDENERS KNEELING PAD CUP OF TEA                                │    0.0265 │       0.5980 │ 16.2580 │
+│ GARDENERS KNEELING PAD CUP OF TEA                                │ GARDENERS KNEELING PAD KEEP CALM                                 │    0.0265 │       0.7203 │ 16.2580 │
+╰──────────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────────┴───────────┴──────────────┴─────────╯
+
+══════════════════════════════════════════════════════════════════════
+  3. COVERAGE METRICS
+══════════════════════════════════════════════════════════════════════
+
+╭──────────────────────────┬─────────╮
+│ Metric                   │   Value │
+├──────────────────────────┼─────────┤
+│ Unique Products In Rules │   16    │
+│ Catalog Coverage Pct     │    0.38 │
+│ Recommended Products     │   16    │
+│ Recommended Coverage Pct │    0.38 │
+│ Transaction Coverage Pct │   28.86 │
+╰──────────────────────────┴─────────╯
+
+══════════════════════════════════════════════════════════════════════
+  4. RULE DIVERSITY
+══════════════════════════════════════════════════════════════════════
+
+╭──────────────────────────────┬─────────╮
+│ Metric                       │   Value │
+├──────────────────────────────┼─────────┤
+│ Unique Recommended Products  │   16    │
+│ Total Consequent Appearances │   33    │
+│ Top5 Concentration Pct       │   60.61 │
+╰──────────────────────────────┴─────────╯
+
+  Top 5 most-recommended products:
+    1. PINK REGENCY TEACUP AND SAUCER
+    2. GREEN REGENCY TEACUP AND SAUCER
+    3. ROSES REGENCY TEACUP AND SAUCER
+    4. RED RETROSPOT CHARLOTTE BAG
+    5. STRAWBERRY CHARLOTTE BAG
+
+══════════════════════════════════════════════════════════════════════
+  5. THRESHOLD SENSITIVITY ANALYSIS
+══════════════════════════════════════════════════════════════════════
+
+  Testing 11 support × confidence combinations...
+
+╭───────────────┬──────────────────┬───────────┬────────────╮
+│   Min Support │   Min Confidence │   N Rules │   Avg Lift │
+├───────────────┼──────────────────┼───────────┼────────────┤
+│         0.010 │            0.100 │      2791 │     10.821 │
+│         0.010 │            0.200 │      2313 │     11.924 │
+│         0.010 │            0.300 │      1555 │     13.979 │
+│         0.020 │            0.100 │       160 │      8.492 │
+│         0.020 │            0.200 │       154 │      8.637 │
+│         0.020 │            0.300 │       138 │      9.018 │
+│         0.030 │            0.200 │        14 │      9.891 │
+│         0.050 │            0.200 │         0 │      0.000 │
+│         0.050 │            0.300 │         0 │      0.000 │
+│         0.100 │            0.300 │         0 │      0.000 │
+│         0.100 │            0.500 │         0 │      0.000 │
+╰───────────────┴──────────────────┴───────────┴────────────╯
+
+  ★ System default: support=0.02, confidence=0.2 → 30 rules, avg lift=14.775
+
+══════════════════════════════════════════════════════════════════════
+  6. TRAIN / TEST HOLDOUT EVALUATION (80/20 split)
+══════════════════════════════════════════════════════════════════════
+
+  Mining rules on 80% of invoices, testing on 20%...
+
+╭────────────────────┬────────────╮
+│ Metric             │      Value │
+├────────────────────┼────────────┤
+│ Train Invoices     │ 16485      │
+│ Test Invoices      │  4122      │
+│ Evaluable Invoices │  3667      │
+│ Avg Precision      │     0.0643 │
+│ Avg Recall         │     0.0235 │
+│ F1 Score           │     0.0344 │
+│ Hit Rate Pct       │    15.27   │
+╰────────────────────┴────────────╯
+
+  Interpretation:
+    Hit Rate 15.27% — percentage of test baskets where
+    at least one recommendation was actually purchased.
+    Precision 0.0643 — of all products recommended, this
+    fraction were genuinely in the customer's basket.
+    Recall 0.0235 — of all products actually bought, this
+    fraction were successfully recommended by the rules.
+
+══════════════════════════════════════════════════════════════════════
+  SUMMARY
+══════════════════════════════════════════════════════════════════════
+
+  Dataset          : Online Retail.xlsx
+  Transactions     : 20,607
+  Products         : 4,194
+  Rules generated  : 30
+  Avg lift         : 14.775
+  Rules with lift>2: 30
+  Catalog coverage : 0.38%
+  Hit rate (test)  : 15.27%
+  Precision        : 0.0643
+  Recall           : 0.0235
+  F1 Score         : 0.0344
+
+======================================================================
+  Report saved to: recommendation_eval_report.txt
+======================================================================
