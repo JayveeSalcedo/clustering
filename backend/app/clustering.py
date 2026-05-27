@@ -155,24 +155,46 @@ def run_clustering(df: pl.DataFrame, col_map: dict, session_id: str | None = Non
         df       = parse_dates(df, date_col)               # normalise to pl.Date
         df       = df.filter(pl.col(date_col).is_not_null())  # drop unparseable dates
 
-        max_date      = df[date_col].max()
-        # Use the day after the last transaction as the reference "today".
-        analysis_date = max_date + datetime.timedelta(days=1)
+        max_date = df[date_col].max()
 
-        # Recency = days between a customer's last purchase and analysis_date.
-        recency_agg = (
-            df.group_by(cid_col)
-            .agg(pl.col(date_col).max().alias("_last_date"))
-            .with_columns(
-                (pl.lit(analysis_date) - pl.col("_last_date"))
-                .dt.total_days().cast(pl.Int32).alias("Recency")
+        # Safety net: if all dates failed to parse, fall back to row-order proxy
+        if max_date is None:
+            meta["has_true_recency"] = False
+            meta["recency_source"]   = "row-order proxy (dates could not be parsed)"
+            df      = df.with_row_index("_row_idx")
+            max_idx = df["_row_idx"].max()
+            recency_agg = (
+                df.group_by(cid_col)
+                .agg(pl.col("_row_idx").max().alias("_max_idx"))
+                .with_columns(
+                    (pl.lit(max_idx) - pl.col("_max_idx")).cast(pl.Int32).alias("Recency")
+                )
+                .select([cid_col, "Recency"])
             )
-            .select([cid_col, "Recency"])
-        )
-        meta["recency_source"]   = f"days since last {date_col}"
-        meta["has_true_recency"] = True
-        yield sse("step", {"stage": "recency", "title": "Recency computed",
-            "detail": f"{df[date_col].min()} to {max_date} · avg {recency_agg['Recency'].mean():.0f} days"})
+            yield sse("step", {
+                "stage": "recency",
+                "title": "Recency estimated (dates could not be parsed)",
+                "detail": "Using row position as recency proxy — check your date column format",
+                "warn": True,
+            })
+        else:
+            # Use the day after the last transaction as the reference "today".
+            analysis_date = max_date + datetime.timedelta(days=1)
+
+            # Recency = days between a customer's last purchase and analysis_date.
+            recency_agg = (
+                df.group_by(cid_col)
+                .agg(pl.col(date_col).max().alias("_last_date"))
+                .with_columns(
+                    (pl.lit(analysis_date) - pl.col("_last_date"))
+                    .dt.total_days().cast(pl.Int32).alias("Recency")
+                )
+                .select([cid_col, "Recency"])
+            )
+            meta["recency_source"]   = f"days since last {date_col}"
+            meta["has_true_recency"] = True
+            yield sse("step", {"stage": "recency", "title": "Recency computed",
+                "detail": f"{df[date_col].min()} to {max_date} · avg {recency_agg['Recency'].mean():.0f} days"})
     else:
         # No date column — use row position as a recency proxy.
         # Higher row index ≈ more recent; recency = max_idx - customer's last row idx.

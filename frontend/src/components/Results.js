@@ -67,6 +67,49 @@ function getActionHint(profile) {
   return "💡 Re-engage — targeted promotions or personalized offers to maintain engagement.";
 }
 
+function escapeCSV(value) {
+  if (value === null || value === undefined) return "";
+  const str = String(value);
+  return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+function exportSegmentsCSV(profiles) {
+  const header = [
+    "Cluster",
+    "Segment",
+    "Customers",
+    "PctCustomers",
+    "MeanRecency",
+    "MeanFrequency",
+    "MeanMonetary",
+    "MedianRecency",
+    "MedianFrequency",
+    "MedianMonetary",
+    "Description",
+  ];
+  const rows = profiles.map((p) => [
+    p.cluster,
+    p.segment,
+    p.size,
+    p.pct_customers,
+    p.mean_recency,
+    p.mean_frequency,
+    p.mean_monetary,
+    p.median_recency,
+    p.median_frequency,
+    p.median_monetary,
+    p.description || "",
+  ]);
+  const csv = [header, ...rows].map((row) => row.map(escapeCSV).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = "customer_segments.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function Results({ data, onReset, analysisData }) {
   const [activeCluster, setActiveCluster] = useState(0);
   const [showReport,    setShowReport]    = useState(false);
@@ -138,6 +181,9 @@ export default function Results({ data, onReset, analysisData }) {
                 📋 Process Log
               </button>
             )}
+            <button className="ghost-btn" onClick={() => exportSegmentsCSV(profiles)}>
+              ⬇ Export CSV
+            </button>
             <button className="ghost-btn" onClick={onReset}>↩ New file</button>
           </div>
         </div>
@@ -269,7 +315,15 @@ export default function Results({ data, onReset, analysisData }) {
 
             <div className="charts-row">
               <div className="chart-box">
-                <p className="chart-title">RFM Profile</p>
+                <p className="chart-title">
+                  RFM Profile
+                  <ChartTooltip
+                    title="RFM Radar Chart"
+                    description="Shows the Recency, Frequency, and Monetary profile of the selected customer segment as a radar (spider) chart."
+                    interpretation="Each axis is normalized 0–100 relative to the best-performing segment. A larger shaded area means a higher-value customer group. Recency⁻¹ is inverted — a higher score means customers purchased more recently."
+                    tip="Compare shapes across segments by clicking each segment card on the left. A segment with a large triangle across all three axes represents your most valuable customers."
+                  />
+                </p>
                 <ResponsiveContainer width="100%" height={200}>
                   <RadarChart data={radarData}>
                     <PolarGrid stroke="#e2e0db" />
@@ -283,7 +337,15 @@ export default function Results({ data, onReset, analysisData }) {
                 </ResponsiveContainer>
               </div>
               <div className="chart-box">
-                <p className="chart-title">Silhouette Scores</p>
+                <p className="chart-title">
+                  Silhouette Scores
+                  <ChartTooltip
+                    title="Silhouette Score Chart"
+                    description="The silhouette score measures how well-separated the customer clusters are. It is the primary metric used to automatically select the best number of segments (k)."
+                    interpretation={`Each bar shows the silhouette score for a different number of clusters (k=2 to k=${Math.max(...silData.map(d => parseInt(d.k.replace('k=',''))))}).  The blue bar (k=${best_k}) was automatically selected because it achieved the highest score of ${bestSilScore.toFixed(4)}.`}
+                    tip="Scores range from -1 to 1. Above 0.5 = good separation (clusters are distinct). 0.3–0.5 = fair. Below 0.3 = weak (clusters may overlap). The system always picks the k with the highest score so you never have to tune it manually."
+                  />
+                </p>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={silData} margin={{ left: -10 }}>
                     <XAxis dataKey="k"
@@ -292,7 +354,10 @@ export default function Results({ data, onReset, analysisData }) {
                     <YAxis
                       tick={{ fill: "#8a8680", fontSize: 10, fontFamily: "IBM Plex Mono" }}
                       axisLine={false} tickLine={false} domain={[0, 1]} />
-                    <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: "rgba(0,0,0,0.03)" }}
+                      formatter={(v, n) => [v.toFixed(4), "Silhouette Score"]}
+                      labelFormatter={(l) => `${l}${silData.find(d=>d.k===l)?.best ? " ← selected" : ""}`}
+                    />
                     <Bar dataKey="score" radius={[4, 4, 0, 0]}>
                       {silData.map((e, i) => (
                         <Cell key={i} fill={e.best ? "#1d4ed8" : "#e2e0db"} />
@@ -300,7 +365,7 @@ export default function Results({ data, onReset, analysisData }) {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
-                <p className="chart-note">Blue = selected k={best_k}</p>
+                <p className="chart-note">Blue = selected k={best_k} · Score: {bestSilScore.toFixed(4)} ({silQuality.label})</p>
               </div>
             </div>
           </div>
@@ -530,6 +595,42 @@ function ActionPlan({ profiles, meta, summary }) {
 /* ─────────────────────────────────────────────────────────────
    Small reusable components
 ───────────────────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────
+   CHART TOOLTIP
+───────────────────────────────────────────────────────────── */
+function ChartTooltip({ title, description, interpretation, tip }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span
+      className="chart-info-icon"
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+      onClick={() => setVisible(v => !v)}
+      aria-label="Chart explanation"
+    >
+      ?
+      {visible && (
+        <span className="chart-tooltip-box">
+          <span className="ctt-title">{title}</span>
+          {description && <span className="ctt-body">{description}</span>}
+          {interpretation && (
+            <span className="ctt-section">
+              <span className="ctt-label">📊 What it shows</span>
+              <span className="ctt-body">{interpretation}</span>
+            </span>
+          )}
+          {tip && (
+            <span className="ctt-section">
+              <span className="ctt-label">💡 How to read it</span>
+              <span className="ctt-body">{tip}</span>
+            </span>
+          )}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function MiniStat({ label, value }) {
   return (
     <div className="mini-stat">

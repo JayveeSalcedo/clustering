@@ -1,14 +1,50 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  LineChart, Line, CartesianGrid, Cell, PieChart, Pie, Legend,
+BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+LineChart, Line, CartesianGrid, Cell, PieChart, Pie, Legend,
 } from "recharts";
 import "./DataAnalysis.css";
 
 const API = "http://localhost:8000";
 
 const COLORS = ["#1d4ed8","#0f766e","#b45309","#7c3aed","#be123c",
-                 "#0369a1","#15803d","#c2410c","#0891b2","#6d28d9"];
+"#0369a1","#15803d","#c2410c","#0891b2","#6d28d9"];
+
+/* ────────────────────────────────────────────────────────────
+   Reusable chart tooltip info icon
+──────────────────────────────────────────────────────────── */
+function ChartTooltip({ title, description, interpretation, tip }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span
+      className="chart-info-icon"
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}
+      onClick={() => setVisible(v => !v)}
+      aria-label="Chart explanation"
+    >
+      ?
+      {visible && (
+        <span className="chart-tooltip-box">
+          <span className="ctt-title">{title}</span>
+          {description && <span className="ctt-body">{description}</span>}
+          {interpretation && (
+            <span className="ctt-section">
+              <span className="ctt-label">📊 What it shows</span>
+              <span className="ctt-body">{interpretation}</span>
+            </span>
+          )}
+          {tip && (
+            <span className="ctt-section">
+              <span className="ctt-label">💡 How to read it</span>
+              <span className="ctt-body">{tip}</span>
+            </span>
+          )}
+        </span>
+      )}
+    </span>
+  );
+}
 
 export default function DataAnalysis({ initialData, file }) {
   // initialData arrives instantly from the /process stream (no extra fetch needed)
@@ -134,7 +170,15 @@ export default function DataAnalysis({ initialData, file }) {
       {has_date && monthly_trend?.length > 0 && (
         <div className="da-row">
           <div className="da-card da-card-wide">
-            <p className="da-card-title">Monthly Revenue</p>
+            <p className="da-card-title">
+              Monthly Revenue
+              <ChartTooltip
+                title="Monthly Revenue Trend"
+                description="Shows total revenue generated per month across the dataset's date range."
+                interpretation="Each point on the line represents the total sales amount for that month. Rising lines indicate growth; drops may signal seasonal slowdowns, lost customers, or inventory issues."
+                tip="Hover over any point to see the exact revenue for that month. Use the date filters above to zoom into specific periods."
+              />
+            </p>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={monthly_trend} margin={{ left: 0, right: 16, top: 4, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -153,7 +197,15 @@ export default function DataAnalysis({ initialData, file }) {
 
           {weekday_data?.length > 0 && (
             <div className="da-card">
-              <p className="da-card-title">Revenue by Day of Week</p>
+              <p className="da-card-title">
+                Revenue by Day of Week
+                <ChartTooltip
+                  title="Revenue by Day of Week"
+                  description="Shows which days of the week generate the most revenue across all transactions in the dataset."
+                  interpretation="Taller bars = more revenue on that day. This reveals customer purchasing habits — for example, weekends may spike for retail, while B2B businesses may peak mid-week."
+                  tip="Use this to decide the best days to run promotions, send email campaigns, or staff up for high-demand periods."
+                />
+              </p>
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={weekday_data} margin={{ left: 0, right: 8, top: 4, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -178,8 +230,16 @@ export default function DataAnalysis({ initialData, file }) {
       {/* ── Row 2: Top N products ── */}
       {(top_products_revenue?.length > 0 || top_products_quantity?.length > 0) && (
         <div className="da-card">
-          <div className="da-card-header">
-            <p className="da-card-title">Top {topN} Products</p>
+        <div className="da-card-header">
+        <p className="da-card-title">
+              Top {topN} Products
+              <ChartTooltip
+                title="Top Products Chart"
+                description="Ranks your best-selling products either by total revenue earned or by total quantity sold, depending on the selected tab."
+                interpretation="By Revenue shows which products contribute most to total sales value. By Quantity shows which products move the most units — these may differ (e.g. a cheap high-volume item vs an expensive low-volume one)."
+                tip="Switch between the Revenue and Quantity tabs to compare. Use the Top N filter above the page to adjust how many products are shown."
+              />
+            </p>
             <div className="tab-toggle">
               <button className={`tab-btn ${productTab === "revenue" ? "tab-active" : ""}`}
                 onClick={() => setProductTab("revenue")}>By Revenue</button>

@@ -170,32 +170,90 @@ def to_float(df: pl.DataFrame, col: str) -> pl.DataFrame:
 
 def parse_dates(df: pl.DataFrame, col: str) -> pl.DataFrame:
     """
-    Robustly parse a string/mixed column into pl.Date.
+    Robustly parse a string/mixed/datetime column into pl.Date.
 
-    Tries several common date formats in order; the first one that parses
-    without raising an exception is used.  If none match, the column is
-    returned unchanged (downstream code checks for null dates).
+    Handles date-only strings, datetime strings with time components,
+    ISO 8601, AM/PM formats, and Polars native Date/Datetime types.
+    Tries each format and accepts the first one that produces at least
+    one non-null value.  Falls back to row-order proxy if nothing works.
     """
-    # Already a date/datetime — just normalise to Date.
-    if df[col].dtype in (pl.Date, pl.Datetime):
+    # Already a plain Date — nothing to do.
+    if df[col].dtype == pl.Date:
+        return df
+
+    # Already a Datetime variant — just cast to Date.
+    if isinstance(df[col].dtype, pl.Datetime) or df[col].dtype in (
+        pl.Datetime, pl.Datetime("us"), pl.Datetime("ms"), pl.Datetime("ns")
+    ):
         return df.with_columns(pl.col(col).cast(pl.Date))
 
-    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d",
-                "%d-%m-%Y", "%m-%d-%Y", "%d.%m.%Y"):
-        try:
-            return df.with_columns(
-                pl.col(col).cast(pl.Utf8).str.to_date(fmt, strict=False).alias(col)
-            )
-        except Exception:
-            continue   # try the next format
+    # Date-only formats
+    date_formats = [
+        "%Y-%m-%d",
+        "%d/%m/%Y",
+        "%m/%d/%Y",
+        "%Y/%m/%d",
+        "%d-%m-%Y",
+        "%m-%d-%Y",
+        "%d.%m.%Y",
+        "%Y.%m.%d",
+        "%B %d, %Y",
+        "%b %d, %Y",
+        "%d %B %Y",
+        "%d %b %Y",
+    ]
 
-    # Last resort: let Polars infer the format automatically.
-    try:
-        return df.with_columns(
-            pl.col(col).cast(pl.Utf8).str.to_date(strict=False).alias(col)
-        )
-    except Exception:
-        return df   # give up; return the column as-is
+    # Datetime formats (with time component) — parsed then cast to Date
+    datetime_formats = [
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y %H:%M",
+        "%m/%d/%Y %H:%M:%S",
+        "%m/%d/%Y %H:%M",
+        "%Y/%m/%d %H:%M:%S",
+        "%Y/%m/%d %H:%M",
+        "%d-%m-%Y %H:%M:%S",
+        "%d-%m-%Y %H:%M",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+        "%d/%m/%Y %I:%M %p",
+        "%m/%d/%Y %I:%M %p",
+    ]
+
+    str_col = df.with_columns(pl.col(col).cast(pl.Utf8))[col]
+
+    # Try date-only formats first
+    for fmt in date_formats:
+        try:
+            parsed = str_col.str.to_date(fmt, strict=False)
+            if parsed.drop_nulls().len() > 0:
+                return df.with_columns(parsed.alias(col))
+        except Exception:
+            continue
+
+    # Try datetime formats — parse then cast to Date
+    for fmt in datetime_formats:
+        try:
+            parsed = str_col.str.to_datetime(fmt, strict=False).cast(pl.Date)
+            if parsed.drop_nulls().len() > 0:
+                return df.with_columns(parsed.alias(col))
+        except Exception:
+            continue
+
+    # Last resort: let Polars infer the format automatically
+    for try_fn in [
+        lambda s: s.str.to_date(strict=False),
+        lambda s: s.str.to_datetime(strict=False).cast(pl.Date),
+    ]:
+        try:
+            parsed = try_fn(str_col)
+            if parsed.drop_nulls().len() > 0:
+                return df.with_columns(parsed.alias(col))
+        except Exception:
+            continue
+
+    return df   # give up — downstream will use row-order proxy
 
 
 def df_to_preview(df: pl.DataFrame, n: int = 8) -> dict:

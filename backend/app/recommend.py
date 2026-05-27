@@ -150,6 +150,14 @@ async def recommend(payload: dict):
         return JSONResponse({
             "rules": [], "n_transactions": n_transactions, "n_products": n_products,
             "segment_name": segment_name, "empty_reason": "support_too_high",
+            "process_log": [
+                {"step": "Session retrieval", "status": "ok", "detail": f"{len(df):,} rows loaded"},
+                {"step": "Column detection",  "status": "ok", "detail": f"Invoice: '{inv_col}' · Product: '{product_col}'"},
+                {"step": "Segment filter",    "status": "ok" if cluster_id else "skip", "detail": f"Cluster {cluster_id}" if cluster_id else "All customers"},
+                {"step": "Basket matrix",     "status": "ok", "detail": f"{n_transactions:,} invoices × {n_products:,} products"},
+                {"step": "FP-Growth mining",  "status": "warn", "detail": f"No frequent item sets at min_support={min_support} — try lowering the Popularity slider"},
+            ],
+            "params": {"min_support": min_support, "min_confidence": min_confidence, "top_n": top_n},
         })
 
     # ── Derive association rules from frequent item sets ─────────────────────
@@ -169,6 +177,59 @@ async def recommend(payload: dict):
         return JSONResponse({
             "rules": [], "n_transactions": n_transactions, "n_products": n_products,
             "segment_name": segment_name, "empty_reason": "confidence_too_high",
+            "process_log": [
+                {
+                    "step": "Session retrieval",
+                    "status": "ok",
+                    "detail": f"Loaded DataFrame from session cache · {len(df):,} rows · {len(df.columns)} columns",
+                },
+                {
+                    "step": "Column detection",
+                    "status": "ok",
+                    "detail": f"Invoice column: '{inv_col}' · Product column: '{product_col}'"
+                              + (f" · Customer column: '{cid_col}'" if cid_col else " · No customer column"),
+                },
+                {
+                    "step": "Segment filter",
+                    "status": "ok" if cluster_id is not None else "skip",
+                    "detail": (
+                        f"Filtered to segment '{segment_name}' (cluster {cluster_id}) · {len(member_ids):,} matching customers · {len(working_df):,} rows retained"
+                        if cluster_id is not None
+                        else "No segment filter applied — using all customers"
+                    ),
+                },
+                {
+                    "step": "Data cleaning",
+                    "status": "ok",
+                    "detail": f"Dropped null/blank invoice and product rows · {len(working_df):,} clean rows remaining",
+                },
+                {
+                    "step": "Basket matrix",
+                    "status": "ok",
+                    "detail": f"{n_transactions:,} invoices × {n_products:,} products · "
+                              f"Sparsity: {100 * (1 - basket_pd.sum().sum() / (basket_pd.shape[0] * basket_pd.shape[1])):.1f}% empty cells",
+                },
+                {
+                    "step": "FP-Growth mining",
+                    "status": "ok",
+                    "detail": f"min_support={min_support} ({min_support*100:.1f}%) · "
+                              f"{len(frequent_items):,} frequent item sets found",
+                },
+                {
+                    "step": "Association rules",
+                    "status": "warn",
+                    "detail": f"No rules met min_confidence={min_confidence} ({min_confidence*100:.0f}%) — try lowering the Reliability slider",
+                },
+            ],
+            "params": {
+                "min_support":    min_support,
+                "min_confidence": min_confidence,
+                "top_n":          top_n,
+                "cluster_id":     cluster_id,
+                "segment_name":   segment_name,
+                "n_frequent_items": len(frequent_items),
+                "n_rules_before_limit": len(rules),
+            },
         })
 
     # ── Sort by lift and return the top-N rules ───────────────────────────────
@@ -186,10 +247,75 @@ async def recommend(payload: dict):
         for _, row in rules.iterrows()
     ]
 
+    # ── Build process log for frontend display ─────────────────────────────
+    process_log = [
+        {
+            "step":   "Session retrieval",
+            "status": "ok",
+            "detail": f"Loaded DataFrame from session cache · {len(df):,} rows · {len(df.columns)} columns",
+        },
+        {
+            "step":   "Column detection",
+            "status": "ok",
+            "detail": f"Invoice column: '{inv_col}' · Product column: '{product_col}'"
+                      + (f" · Customer column: '{cid_col}'" if cid_col else " · No customer column"),
+        },
+        {
+            "step":   "Segment filter",
+            "status": "ok" if cluster_id is not None else "skip",
+            "detail": (
+                f"Filtered to segment '{segment_name}' (cluster {cluster_id}) · {len(member_ids):,} matching customers · {len(working_df):,} rows retained"
+                if cluster_id is not None
+                else "No segment filter applied — using all customers"
+            ),
+        },
+        {
+            "step":   "Data cleaning",
+            "status": "ok",
+            "detail": f"Dropped null/blank invoice and product rows · {len(working_df):,} clean rows remaining",
+        },
+        {
+            "step":   "Basket matrix",
+            "status": "ok",
+            "detail": f"{n_transactions:,} invoices × {n_products:,} products · "
+                      f"Sparsity: {100 * (1 - basket_pd.sum().sum() / (basket_pd.shape[0] * basket_pd.shape[1])):.1f}% empty cells",
+        },
+        {
+            "step":   "FP-Growth mining",
+            "status": "ok",
+            "detail": f"min_support={min_support} ({min_support*100:.1f}%) · "
+                      f"{len(frequent_items):,} frequent item sets found",
+        },
+        {
+            "step":   "Association rules",
+            "status": "ok",
+            "detail": f"min_confidence={min_confidence} ({min_confidence*100:.0f}%) · "
+                      f"{len(rules):,} rules generated · sorted by lift · top {top_n} returned",
+        },
+        {
+            "step":   "Rule quality",
+            "status": "ok",
+            "detail": f"Avg lift: {rules['lift'].mean():.4f} · "
+                      f"Max lift: {rules['lift'].max():.4f} · "
+                      f"Avg confidence: {rules['confidence'].mean():.4f} · "
+                      f"All rules lift > 1: {bool((rules['lift'] > 1).all())}",
+        },
+    ]
+
     return JSONResponse({
         "rules":          rules_out,
         "n_transactions": n_transactions,
         "n_products":     n_products,
         "segment_name":   segment_name,
         "empty_reason":   None,
+        "process_log":    process_log,
+        "params": {
+            "min_support":    min_support,
+            "min_confidence": min_confidence,
+            "top_n":          top_n,
+            "cluster_id":     cluster_id,
+            "segment_name":   segment_name,
+            "n_frequent_items": len(frequent_items),
+            "n_rules_before_limit": len(rules),
+        },
     })

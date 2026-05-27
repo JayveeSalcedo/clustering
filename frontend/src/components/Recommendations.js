@@ -43,7 +43,6 @@ const ERROR_MESSAGES = {
     "This segment only has one type of product — bundles need at least 2.",
 };
 
-// ── CSV export helper ─────────────────────────────────────────────────────────
 function exportCSV(rules, segmentLabel) {
   const header = ["Antecedents", "Consequents", "Support", "Confidence", "Lift"];
   const rows = rules.map((r) => [
@@ -63,7 +62,6 @@ function exportCSV(rules, segmentLabel) {
   URL.revokeObjectURL(url);
 }
 
-// ── Lift label helper ─────────────────────────────────────────────────────────
 function liftMeta(lift) {
   if (lift >= 3) return { label: "Very strong", icon: "🔥", bg: "#fef3c7", text: "#92400e", border: "#fde68a" };
   if (lift >= 2) return { label: "Strong",      icon: "✅", bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0" };
@@ -79,8 +77,8 @@ export default function Recommendations({ sessionId, profiles }) {
   const [loading,       setLoading]       = useState(false);
   const [error,         setError]         = useState(null);
   const [tooltip,       setTooltip]       = useState(null);
-  // "table" | "cards" — view toggle
   const [viewMode,      setViewMode]      = useState("cards");
+  const [showLog,       setShowLog]       = useState(false);
 
   const run = useCallback(async () => {
     setLoading(true);
@@ -118,7 +116,7 @@ export default function Recommendations({ sessionId, profiles }) {
 
   return (
     <div className="rec-root">
-      {/* ── Page header ── */}
+
       <div className="rec-header">
         <div>
           <h1 className="rec-title">Product Recommendations</h1>
@@ -128,15 +126,12 @@ export default function Recommendations({ sessionId, profiles }) {
         </div>
       </div>
 
-      {/* ── Controls card ── */}
       <div className="rec-controls-card">
-        {/* Tab: All vs Segment */}
         <div className="rec-tab-row">
           <button className={`rec-tab ${tab === "all"     ? "rec-tab-active" : ""}`} onClick={() => setTab("all")}>🌐 All Customers</button>
           <button className={`rec-tab ${tab === "segment" ? "rec-tab-active" : ""}`} onClick={() => setTab("segment")}>👥 By Segment</button>
         </div>
 
-        {/* Segment picker */}
         {tab === "segment" && (
           <div className="rec-segment-picker">
             <p className="rec-control-label">Choose a customer segment</p>
@@ -162,7 +157,6 @@ export default function Recommendations({ sessionId, profiles }) {
           </div>
         )}
 
-        {/* Threshold sliders */}
         <div className="rec-thresholds">
           {["support", "confidence"].map((key) => {
             const info = TERM_INFO[key];
@@ -211,7 +205,6 @@ export default function Recommendations({ sessionId, profiles }) {
         </button>
       </div>
 
-      {/* ── Error ── */}
       {error && (
         <div className="rec-error">
           <span className="rec-error-icon">⚠️</span>
@@ -222,24 +215,31 @@ export default function Recommendations({ sessionId, profiles }) {
         </div>
       )}
 
-      {/* ── Results ── */}
       {result && (
         <ResultsPanel
           result={result}
-          minSupport={minSupport}
-          minConfidence={minConfidence}
           tab={tab}
           viewMode={viewMode}
           setViewMode={setViewMode}
           segmentLabel={segmentLabel}
+          onShowLog={() => setShowLog(true)}
         />
       )}
+
+      {showLog && result && (
+        <RecommendationLog
+          log={result.process_log}
+          params={result.params}
+          onClose={() => setShowLog(false)}
+        />
+      )}
+
     </div>
   );
 }
 
 // ── Results panel ─────────────────────────────────────────────────────────────
-function ResultsPanel({ result, tab, viewMode, setViewMode, segmentLabel }) {
+function ResultsPanel({ result, tab, viewMode, setViewMode, segmentLabel, onShowLog }) {
   const { rules, n_transactions, n_products, segment_name, empty_reason } = result;
 
   const emptyMessages = {
@@ -249,7 +249,6 @@ function ResultsPanel({ result, tab, viewMode, setViewMode, segmentLabel }) {
 
   return (
     <div className="rec-results">
-      {/* Stats bar + actions row */}
       <div className="rec-results-topbar">
         <div className="rec-stats-bar">
           <div className="rec-stat">
@@ -268,31 +267,31 @@ function ResultsPanel({ result, tab, viewMode, setViewMode, segmentLabel }) {
           </div>
         </div>
 
-        {/* View toggle + export */}
-        {rules.length > 0 && (
-          <div className="rec-actions-row">
-            <div className="rec-view-toggle">
+        <div className="rec-actions-row">
+          {rules.length > 0 && (
+            <>
+              <div className="rec-view-toggle">
+                <button
+                  className={`rec-view-btn ${viewMode === "cards" ? "active" : ""}`}
+                  onClick={() => setViewMode("cards")}
+                >⊞ Cards</button>
+                <button
+                  className={`rec-view-btn ${viewMode === "table" ? "active" : ""}`}
+                  onClick={() => setViewMode("table")}
+                >☰ Table</button>
+              </div>
               <button
-                className={`rec-view-btn ${viewMode === "cards" ? "active" : ""}`}
-                onClick={() => setViewMode("cards")}
-                title="Card view"
-              >⊞ Cards</button>
-              <button
-                className={`rec-view-btn ${viewMode === "table" ? "active" : ""}`}
-                onClick={() => setViewMode("table")}
-                title="Table view"
-              >☰ Table</button>
-            </div>
-            <button
-              className="rec-export-btn"
-              onClick={() => exportCSV(rules, segmentLabel)}
-              title="Download rules as CSV"
-            >⬇ Export CSV</button>
-          </div>
-        )}
+                className="rec-export-btn"
+                onClick={() => exportCSV(rules, segmentLabel)}
+              >⬇ Export CSV</button>
+            </>
+          )}
+          <button className="rec-log-btn" onClick={onShowLog}>
+            📋 Process Log
+          </button>
+        </div>
       </div>
 
-      {/* Empty state */}
       {rules.length === 0 ? (
         <div className="rec-empty">
           <p className="rec-empty-icon">🔎</p>
@@ -308,25 +307,125 @@ function ResultsPanel({ result, tab, viewMode, setViewMode, segmentLabel }) {
   );
 }
 
+// ── Recommendation Process Log Modal ─────────────────────────────────────────
+function RecommendationLog({ log, params, onClose }) {
+  const statusIcon = (s) =>
+    s === "ok"   ? <span className="rlog-icon rlog-ok">✓</span>  :
+    s === "warn" ? <span className="rlog-icon rlog-warn">⚠</span> :
+    s === "skip" ? <span className="rlog-icon rlog-skip">—</span> :
+                   <span className="rlog-icon rlog-ok">✓</span>;
+
+  return (
+    <div className="report-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="report-drawer">
+
+        {/* Header */}
+        <div className="report-header">
+          <div>
+            <h2 className="report-title">Recommendation Process Log</h2>
+            <p className="report-sub">Step-by-step breakdown of how the FP-Growth algorithm ran</p>
+          </div>
+          <button className="report-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="report-body">
+
+          {/* Params used */}
+          {params && (
+            <div className="ov-section" style={{ marginBottom: 24 }}>
+              <h3 className="ov-section-title">Parameters Used</h3>
+              <div className="ov-cards">
+                <OvCard label="Min Support"    value={`${(params.min_support * 100).toFixed(1)}%`}  color="blue" />
+                <OvCard label="Min Confidence" value={`${(params.min_confidence * 100).toFixed(0)}%`} color="blue" />
+                <OvCard label="Top N Rules"    value={params.top_n} />
+                <OvCard label="Segment"        value={params.segment_name || "All customers"} color="green" />
+                <OvCard label="Frequent Sets"  value={(params.n_frequent_items || 0).toLocaleString()} color="amber" />
+                <OvCard label="Rules Generated" value={(params.n_rules_before_limit || 0).toLocaleString()} color="amber" />
+              </div>
+            </div>
+          )}
+
+          {/* Pipeline steps */}
+          <div className="ov-section" style={{ marginBottom: 24 }}>
+            <h3 className="ov-section-title">Pipeline Steps</h3>
+            <div className="rlog-steps">
+              {(log || []).map((entry, i) => (
+                <div key={i} className={`rlog-row rlog-row-${entry.status}`}>
+                  <div className="rlog-left">
+                    {statusIcon(entry.status)}
+                    <span className="rlog-step-name">{entry.step}</span>
+                  </div>
+                  <span className="rlog-detail">{entry.detail}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Algorithm explanation */}
+          <div className="ov-section">
+            <h3 className="ov-section-title">How FP-Growth Works</h3>
+            <ol className="pipeline-list">
+              <li>Retrieve the cached DataFrame from session memory (uploaded file data)</li>
+              <li>Detect invoice and product columns from column alias mapping</li>
+              <li>Optionally filter rows to only the selected customer segment using KMeans labels</li>
+              <li>Clean the working data — drop null or blank invoice and product values</li>
+              <li>Build a boolean basket matrix: rows = invoices, columns = products, True = purchased</li>
+              <li>Run FP-Growth on the basket matrix to find all frequent item sets above min_support</li>
+              <li>Derive association rules from frequent item sets filtered by min_confidence</li>
+              <li>Sort all rules by lift (descending) and return the top N strongest rules</li>
+            </ol>
+          </div>
+
+          {/* Metric guide */}
+          <div className="ov-section" style={{ marginTop: 24 }}>
+            <h3 className="ov-section-title">Metric Reference</h3>
+            <div className="rlog-metric-guide">
+              <div className="rlog-metric-row">
+                <span className="rlog-metric-name">Support</span>
+                <span className="rlog-metric-formula">P(A ∪ B)</span>
+                <span className="rlog-metric-desc">Fraction of all transactions containing both products. Filters out rare flukes.</span>
+              </div>
+              <div className="rlog-metric-row">
+                <span className="rlog-metric-name">Confidence</span>
+                <span className="rlog-metric-formula">P(A ∪ B) / P(A)</span>
+                <span className="rlog-metric-desc">Of all orders with product A, what fraction also had B. Measures reliability.</span>
+              </div>
+              <div className="rlog-metric-row">
+                <span className="rlog-metric-name">Lift</span>
+                <span className="rlog-metric-formula">confidence / P(B)</span>
+                <span className="rlog-metric-desc">How much more likely B is given A vs random chance. Above 1 = genuine relationship. Used for ranking.</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OvCard({ label, value, color }) {
+  return (
+    <div className={`ov-card ov-card-${color || "default"}`}>
+      <span className="ov-card-value">{value}</span>
+      <span className="ov-card-label">{label}</span>
+    </div>
+  );
+}
+
 // ── CARD VIEW ─────────────────────────────────────────────────────────────────
 function CardsView({ rules }) {
   const top3    = rules.slice(0, 3);
   const theRest = rules.slice(3);
-
   return (
     <div className="rec-cards-root">
-      {/* ── Spotlight strip: top 3 ── */}
       <div className="rec-spotlight-label">
         <span className="rec-spotlight-icon">⭐</span>
         Top bundle opportunities
       </div>
       <div className="rec-spotlight-strip">
-        {top3.map((rule, i) => (
-          <SpotlightCard key={i} rule={rule} rank={i + 1} />
-        ))}
+        {top3.map((rule, i) => <SpotlightCard key={i} rule={rule} rank={i + 1} />)}
       </div>
-
-      {/* ── All rules as cards ── */}
       {theRest.length > 0 && (
         <>
           <div className="rec-spotlight-label" style={{ marginTop: 8 }}>
@@ -334,9 +433,7 @@ function CardsView({ rules }) {
             All {rules.length} bundles — sorted by lift
           </div>
           <div className="rec-card-grid">
-            {rules.map((rule, i) => (
-              <BundleCard key={i} rule={rule} rank={i + 1} />
-            ))}
+            {rules.map((rule, i) => <BundleCard key={i} rule={rule} rank={i + 1} />)}
           </div>
         </>
       )}
@@ -344,13 +441,11 @@ function CardsView({ rules }) {
   );
 }
 
-// Spotlight card — large format, plain-English sentence
 function SpotlightCard({ rule, rank }) {
-  const meta      = liftMeta(rule.lift);
-  const antText   = rule.antecedents.join(" + ");
-  const consText  = rule.consequents.join(" + ");
-  const pct       = Math.round(rule.confidence * 100);
-
+  const meta    = liftMeta(rule.lift);
+  const antText = rule.antecedents.join(" + ");
+  const conText = rule.consequents.join(" + ");
+  const pct     = Math.round(rule.confidence * 100);
   return (
     <div className="rec-spotlight-card" style={{ borderColor: meta.border }}>
       <div className="rec-spotlight-rank">#{rank}</div>
@@ -360,7 +455,7 @@ function SpotlightCard({ rule, rank }) {
       <p className="rec-spotlight-sentence">
         Customers who buy <strong>{antText}</strong> are{" "}
         <span className="rec-spotlight-multiplier">×{rule.lift.toFixed(1)}</span> more likely to also buy{" "}
-        <strong>{consText}</strong>.
+        <strong>{conText}</strong>.
       </p>
       <div className="rec-spotlight-meta">
         <span>{pct}% of the time this pairing occurs</span>
@@ -371,7 +466,6 @@ function SpotlightCard({ rule, rank }) {
   );
 }
 
-// Bundle card — compact, visual arrow layout
 function BundleCard({ rule, rank }) {
   const meta = liftMeta(rule.lift);
   return (
@@ -382,29 +476,21 @@ function BundleCard({ rule, rank }) {
           {meta.icon} ×{rule.lift.toFixed(2)}
         </span>
       </div>
-
-      {/* Product flow: IF → THEN */}
       <div className="rec-bundle-flow">
         <div className="rec-bundle-side">
           <span className="rec-bundle-side-label">If they buy</span>
           <div className="rec-bundle-tags">
-            {rule.antecedents.map((p, i) => (
-              <span key={i} className="rec-product-tag rec-product-if">{p}</span>
-            ))}
+            {rule.antecedents.map((p, i) => <span key={i} className="rec-product-tag rec-product-if">{p}</span>)}
           </div>
         </div>
         <div className="rec-bundle-arrow">→</div>
         <div className="rec-bundle-side">
           <span className="rec-bundle-side-label">Recommend</span>
           <div className="rec-bundle-tags">
-            {rule.consequents.map((p, i) => (
-              <span key={i} className="rec-product-tag rec-product-then">{p}</span>
-            ))}
+            {rule.consequents.map((p, i) => <span key={i} className="rec-product-tag rec-product-then">{p}</span>)}
           </div>
         </div>
       </div>
-
-      {/* Metrics row */}
       <div className="rec-bundle-metrics">
         <div className="rec-bundle-metric">
           <span className="rec-bundle-metric-label">Popularity</span>
@@ -425,7 +511,6 @@ function BundleCard({ rule, rank }) {
   );
 }
 
-// ── TABLE VIEW (original layout, preserved) ───────────────────────────────────
 function TableView({ rules }) {
   return (
     <>
@@ -453,46 +538,30 @@ function TableView({ rules }) {
               </span>
               <span className="rec-metric">
                 <span className="rec-metric-val">{(rule.support * 100).toFixed(1)}%</span>
-                <SupportBar value={rule.support} />
+                <div className="rec-mini-bar-wrap">
+                  <div className="rec-mini-bar" style={{ width: `${Math.min(rule.support / 0.2, 1) * 100}%`, background: "#bfdbfe" }} />
+                </div>
               </span>
               <span className="rec-metric">
                 <span className="rec-metric-val">{(rule.confidence * 100).toFixed(0)}%</span>
-                <ConfidenceBar value={rule.confidence} />
+                <div className="rec-mini-bar-wrap">
+                  <div className="rec-mini-bar" style={{ width: `${rule.confidence * 100}%`, background: "#bbf7d0" }} />
+                </div>
               </span>
               <span className="rec-metric">
-                <LiftBadge lift={rule.lift} />
+                <span className="rec-lift-badge" style={{
+                  background: liftMeta(rule.lift).bg,
+                  color: liftMeta(rule.lift).text,
+                  borderColor: liftMeta(rule.lift).border,
+                }}>
+                  {liftMeta(rule.lift).icon} ×{rule.lift.toFixed(2)}
+                  <span className="rec-lift-label">{liftMeta(rule.lift).label}</span>
+                </span>
               </span>
             </div>
           ))}
         </div>
       </div>
     </>
-  );
-}
-
-// ── Small reusable visual helpers ─────────────────────────────────────────────
-function SupportBar({ value }) {
-  return (
-    <div className="rec-mini-bar-wrap">
-      <div className="rec-mini-bar" style={{ width: `${Math.min(value / 0.2, 1) * 100}%`, background: "#bfdbfe" }} />
-    </div>
-  );
-}
-
-function ConfidenceBar({ value }) {
-  return (
-    <div className="rec-mini-bar-wrap">
-      <div className="rec-mini-bar" style={{ width: `${value * 100}%`, background: "#bbf7d0" }} />
-    </div>
-  );
-}
-
-function LiftBadge({ lift }) {
-  const meta = liftMeta(lift);
-  return (
-    <span className="rec-lift-badge" style={{ background: meta.bg, color: meta.text, borderColor: meta.border }}>
-      {meta.icon} ×{lift.toFixed(2)}
-      <span className="rec-lift-label">{meta.label}</span>
-    </span>
   );
 }
