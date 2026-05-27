@@ -1,0 +1,26 @@
+services:
+  # ── Backend: FastAPI ──────────────────────────────────────────────────────
+  - type: web
+    name: rfmseg-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false          # You will paste this value in the Render dashboard
+
+  # ── Frontend: React static site ───────────────────────────────────────────
+  - type: web
+    name: rfmseg-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: build
+    envVars:
+      - key: REACT_APP_API_URL
+        sync: false          # Paste your backend URL here after first deploy
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

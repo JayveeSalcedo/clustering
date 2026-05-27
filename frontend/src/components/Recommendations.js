@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import "./Recommendations.css";
 
-const API = "http://localhost:8000";
+const API = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 const TERM_INFO = {
   support: {

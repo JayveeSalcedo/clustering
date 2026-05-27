@@ -6,7 +6,7 @@ import Recommendations from "./components/Recommendations";
 import FloatingChatButton from "./components/FloatingChatButton";
 import "./App.css";
 
-const API = "http://localhost:8000";
+const API = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 export default function App() {
   const [phase, setPhase]           = useState("upload");    // upload | app
